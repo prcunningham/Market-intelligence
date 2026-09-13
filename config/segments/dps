@@ -1,0 +1,15 @@
+description: >
+  DPS product code segment.
+product_codes:
+  - DPS
+cfr_numbers: []
+device_classes: []
+applicants: []
+date_start: null
+date_end: null
+free_text: null
+endpoints:
+  - "510k"
+  - classification
+  - enforcement
+  - event
