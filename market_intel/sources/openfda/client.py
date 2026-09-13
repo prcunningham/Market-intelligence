@@ -92,15 +92,32 @@ class OpenFDAClient:
                 return resp.json()
 
             if resp.status_code == 404:
-                # openFDA returns 404 with a NOT_FOUND error body when a
-                # query matches zero records -- treat as an empty page.
+                # openFDA returns 404 with a NOT_FOUND error body both when
+                # a query is well-formed but genuinely matches zero records,
+                # AND when a query is malformed (e.g. an unknown field, or
+                # invalid Lucene syntax) -- the two are NOT distinguishable
+                # by error code alone. Only the former should be treated as
+                # an empty page; the latter must surface as an error, or a
+                # broken query silently looks like "no competitors found."
+                # openFDA's own message text for a genuine empty result is
+                # consistently "No matches found!" -- anything else (a
+                # parser complaint, an unknown-field message, etc.) is
+                # treated as a real failure.
                 try:
                     body = resp.json()
                 except ValueError:
                     body = {}
-                if body.get("error", {}).get("code") == "NOT_FOUND":
+                error = body.get("error", {}) if isinstance(body, dict) else {}
+                message = (error.get("message") or "").strip().lower()
+                if error.get("code") == "NOT_FOUND" and "no matches found" in message:
                     return {"meta": {"results": {"total": 0}}, "results": []}
-                raise OpenFDAError(f"404 from {url}: {resp.text[:500]}")
+                raise OpenFDAError(
+                    f"openFDA 404 for {url} does not look like a genuine "
+                    f"empty result (code={error.get('code')!r}, "
+                    f"message={error.get('message')!r}); treating this as a "
+                    f"query error rather than zero records. search={params.get('search')!r}. "
+                    f"Response: {resp.text[:500]}"
+                )
 
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt > self.max_retries:
@@ -140,7 +157,7 @@ class OpenFDAClient:
         the result set or MAX_SKIP is exhausted.
 
         `search` is an openFDA Lucene-style query string, e.g.
-        'product_code:"LRK"+AND+decision_date:[2015-01-01+TO+2020-12-31]'.
+        'product_code:"LRK" AND decision_date:[2015-01-01 TO 2020-12-31]'.
         Use `build_query()` to construct these from structured filters.
         """
         spec = self._spec(endpoint)
@@ -207,11 +224,29 @@ def _quote(value: str) -> str:
 
 
 def build_query(clauses: List[str]) -> Optional[str]:
-    """Join pre-built openFDA field clauses with AND. Empty clauses are dropped."""
+    """Join pre-built openFDA field clauses with AND. Empty clauses are dropped.
+
+    Uses ordinary spaces around boolean operators (Lucene query syntax),
+    not literal '+' signs -- `requests` URL-encodes the query string itself
+    when it builds the request, so pre-encoding here would double-encode
+    it and send openFDA a literal '+' character instead of a boolean AND.
+
+    Each clause is expected to already be self-contained (`field_in()`'s
+    `field:("A" OR "B")`, `date_range()`'s `field:[start TO end]`, or a
+    single `field:"value"` term), so clauses are ANDed together as-is with
+    no extra wrapping -- `field:(...)` is already atomic from Lucene's
+    perspective, so wrapping it again in an outer `(...)` is redundant, and
+    for a single clause (the common case: one product-code basket, nothing
+    else set) it must round-trip unchanged, e.g.
+    `product_code:("LRK" OR "LQZ" OR "PLC")`, not
+    `(product_code:("LRK" OR "LQZ" OR "PLC"))`. If you pass a raw free-text
+    clause with a top-level (un-field-scoped) OR, wrap it in parens
+    yourself before passing it in here.
+    """
     clauses = [c for c in clauses if c]
     if not clauses:
         return None
-    return "+AND+".join(f"({c})" if "+OR+" in c else c for c in clauses)
+    return " AND ".join(clauses)
 
 
 def field_in(field_name: str, values: List[str]) -> str:
@@ -221,7 +256,7 @@ def field_in(field_name: str, values: List[str]) -> str:
         return ""
     if len(values) == 1:
         return f"{field_name}:{_quote(values[0])}"
-    joined = "+OR+".join(_quote(v) for v in values)
+    joined = " OR ".join(_quote(v) for v in values)
     return f"{field_name}:({joined})"
 
 
@@ -231,4 +266,4 @@ def date_range(field_name: str, start: Optional[str], end: Optional[str]) -> str
         return ""
     start = start or "*"
     end = end or "*"
-    return f"{field_name}:[{start}+TO+{end}]"
+    return f"{field_name}:[{start} TO {end}]"

@@ -11,9 +11,19 @@ def test_query_for_510k_combines_product_codes_and_dates():
         date_end="2020-12-31",
     )
     q = seg.query_for_endpoint("510k")
-    assert 'product_code:("LRK"+OR+"LQZ")' in q
-    assert "decision_date:[2018-01-01+TO+2020-12-31]" in q
-    assert "+AND+" in q
+    assert 'product_code:("LRK" OR "LQZ")' in q
+    assert "decision_date:[2018-01-01 TO 2020-12-31]" in q
+    assert " AND " in q
+
+
+def test_lrk_lqz_plc_product_code_query_matches_expected_lucene_syntax():
+    # Regression test for the sleep-appliance segment's exact basket: this
+    # must be valid openFDA/Lucene syntax (spaces around OR, not literal
+    # '+' signs) or the live query returns zero records for every
+    # competitor in the segment without ever raising an error.
+    seg = Segment(name="sleep_apnea_oral_appliances", product_codes=["LRK", "LQZ", "PLC"])
+    q = seg.query_for_endpoint("510k")
+    assert q == 'product_code:("LRK" OR "LQZ" OR "PLC")'
 
 
 def test_query_for_classification_ignores_applicant_filter():

@@ -128,8 +128,15 @@ ENDPOINTS = {
         path="/device/event.json",
         id_fields=["mdr_report_key"],
         company_field="manufacturer_name",
-        product_code_paths=["device.openfda.product_code"],
-        product_code_search_field="device.openfda.product_code",
+        # `device.device_report_product_code` is the submitter-reported
+        # product code and is the documented searchable field for this
+        # endpoint (https://open.fda.gov/apis/device/event/searchable-fields/).
+        # `device.openfda.product_code` is FDA's own linked product code and
+        # is only populated when that matching succeeded, so it's kept as a
+        # secondary extraction path (not a search field) to catch codes on
+        # records where the submitter-reported field is missing/inconsistent.
+        product_code_paths=["device.device_report_product_code", "device.openfda.product_code"],
+        product_code_search_field="device.device_report_product_code",
         date_field="date_received",
         event_type="adverse_event",
         description="Adverse event / MDR (MAUDE) reports",
