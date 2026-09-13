@@ -94,6 +94,7 @@ def download_510k_summaries(
     and path (set only when status == 'downloaded').
     """
     out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
     session = session or requests.Session()
 
     results = []

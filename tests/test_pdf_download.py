@@ -61,6 +61,23 @@ def test_download_510k_summaries_handles_missing_url(tmp_path):
     assert pd.isna(result.iloc[0]["path"])
 
 
+def test_download_510k_summaries_creates_out_dir_even_if_all_not_found(tmp_path):
+    # Regression test: the output folder must exist after the call even
+    # when every record 404s -- it previously only got created inside the
+    # 200-status branch, so an all-not-found run silently never created
+    # the folder at all, which looked like the command had done nothing.
+    out_dir = tmp_path / "does_not_exist_yet" / "pdfs"
+    url = "https://www.accessdata.fda.gov/cdrh_docs/pdf19/K999999.pdf"
+    session = FakeSession({url: FakeResponse(404)})
+    listing = pd.DataFrame([
+        {"k_number": "K999999", "device_name": "A", "applicant": "Acme", "summary_pdf_url": url},
+    ])
+    assert not out_dir.exists()
+    result = pdf_download.download_510k_summaries(listing, out_dir, session=session)
+    assert out_dir.exists()
+    assert result.iloc[0]["status"] == "not_found"
+
+
 def test_download_510k_summaries_downloads_each_row(tmp_path):
     url1 = "https://www.accessdata.fda.gov/cdrh_docs/pdf19/K193503.pdf"
     url2 = "https://www.accessdata.fda.gov/cdrh_docs/pdf5/K052737.pdf"
