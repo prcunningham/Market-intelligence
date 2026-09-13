@@ -7,6 +7,7 @@ Command-line entry point.
     python -m market_intel top-movers --segment sleep_apnea_oral_appliances
     python -m market_intel category-trends --segment sleep_apnea_oral_appliances
     python -m market_intel companies --segment sleep_apnea_oral_appliances
+    python -m market_intel download-pdfs --segment sleep_apnea_oral_appliances --out-dir ./pdfs --limit 20
     python -m market_intel list-segments
     python -m market_intel rebuild-events
 """
@@ -19,7 +20,7 @@ import sys
 
 import pandas as pd
 
-from . import analysis, db, pipeline
+from . import analysis, db, pdf_download, pipeline
 from .segments import Segment, list_segments
 from .sources.openfda import OpenFDAClient
 
@@ -120,6 +121,32 @@ def cmd_companies(args: argparse.Namespace) -> None:
     conn.close()
 
 
+def cmd_download_pdfs(args: argparse.Namespace) -> None:
+    conn = db.connect()
+    listing = analysis.listing_510k(conn, segment=args.segment)
+    conn.close()
+
+    if args.recent_first:
+        listing = listing.sort_values("decision_date", ascending=False, na_position="last")
+    if args.limit:
+        listing = listing.head(args.limit)
+
+    if listing.empty:
+        print(f"No 510(k) records cached for segment {args.segment!r}. Run `refresh` first.")
+        return
+
+    print(f"Downloading up to {len(listing)} PDF(s) to {args.out_dir} ...")
+    result = pdf_download.download_510k_summaries(listing, args.out_dir)
+
+    counts = result["status"].value_counts()
+    for status, count in counts.items():
+        print(f"  {status:12s} {count}")
+
+    if args.manifest:
+        analysis.export_csv(result, args.manifest)
+        print(f"Wrote manifest ({len(result)} rows) to {args.manifest}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="market_intel", description=__doc__,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -139,6 +166,18 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("rebuild-events", help="Recompute events from cached raw records "
                                                 "(e.g. after editing company_aliases.yaml)")
     p.set_defaults(func=cmd_rebuild_events)
+
+    p = sub.add_parser("download-pdfs", help="Download 510(k) Summary/Statement PDFs "
+                                               "for a segment's cached records")
+    p.add_argument("--segment", required=True)
+    p.add_argument("--out-dir", required=True, help="Folder to save PDFs into (created if missing)")
+    p.add_argument("--limit", type=int, default=None,
+                    help="Only download this many records (default: all cached 510(k) records)")
+    p.add_argument("--recent-first", action="store_true",
+                    help="Sort by decision_date descending before applying --limit "
+                         "(default order is listing_510k's own, oldest first)")
+    p.add_argument("--manifest", help="Also write a CSV of {k_number, url, status, path} here")
+    p.set_defaults(func=cmd_download_pdfs)
 
     for name, func, extra in [
         ("pivot", cmd_pivot, None),
