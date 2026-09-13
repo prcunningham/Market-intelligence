@@ -73,6 +73,33 @@ def test_run_segment_persists_raw_records_and_events(conn, normalizer):
     assert all(e["company_category"] == "Strategic/Incumbent Medtech" for e in philips_rows)
 
 
+def test_run_segment_commits_so_data_survives_reconnect(tmp_path, normalizer):
+    # Regression test: run_segment must commit its writes. A prior version
+    # only wrote through the connection without ever calling commit(), so
+    # everything vanished as soon as the connection was closed (SQLite
+    # implicitly rolls back an uncommitted transaction on close) -- this
+    # was invisible to tests that read back through the same connection,
+    # since a connection sees its own uncommitted writes.
+    db_path = tmp_path / "durability.sqlite"
+    records = {"510k": [
+        {"k_number": "K001", "applicant": "Respironics Inc",
+         "product_code": "LRK", "decision_date": "20190501"},
+    ]}
+    client = FakeOpenFDAClient(records)
+    segment = Segment(name="test_segment", product_codes=["LRK"], endpoints=["510k"])
+
+    conn1 = db.connect(db_path)
+    pipeline.run_segment(segment, conn=conn1, client=client, normalizer=normalizer)
+    conn1.close()
+
+    conn2 = db.connect(db_path)
+    assert conn2.execute("SELECT COUNT(*) FROM raw_records").fetchone()[0] == 1
+    assert conn2.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
+    assert conn2.execute("SELECT COUNT(*) FROM segments").fetchone()[0] == 1
+    assert conn2.execute("SELECT COUNT(*) FROM fetch_log").fetchone()[0] == 1
+    conn2.close()
+
+
 def test_run_segment_skips_endpoint_with_no_applicable_filter(conn, normalizer):
     client = FakeOpenFDAClient({})
     segment = Segment(name="test_segment", device_classes=["2"], endpoints=["udi"])

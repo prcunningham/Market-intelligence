@@ -154,8 +154,16 @@ def run_segment(
                          {"search": query}, "error")
             stats[endpoint_key] = {"status": "error", "records": record_count, "error": str(e)}
 
+        finally:
+            # Commit after each endpoint so a later endpoint's failure (or
+            # the process being killed) can't roll back progress already
+            # made on this one -- raw_records/events written so far for a
+            # partially-successful segment refresh are kept.
+            conn.commit()
+
     for canonical_name, category in companies_seen.items():
         db.upsert_company(conn, canonical_name, category, now)
+    conn.commit()
 
     if own_conn:
         conn.close()
