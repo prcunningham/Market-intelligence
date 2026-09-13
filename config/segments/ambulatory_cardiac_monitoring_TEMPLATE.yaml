@@ -1,0 +1,34 @@
+# TEMPLATE -- not a validated segment.
+#
+# This is a starting point for an Ambulatory Monitoring & Diagnostics
+# segment (e.g. Holter monitors, mobile cardiac telemetry, ambulatory ECG
+# patches). Unlike the sleep-appliance segment, this repo does not ship
+# with pre-verified product codes for this category -- FDA product codes
+# should be looked up rather than guessed, since getting one wrong either
+# silently misses competitors or silently pulls in an unrelated category.
+#
+# To find the right codes:
+#   1. Run a free-text pull against the classification endpoint, e.g.:
+#        python -m market_intel refresh --segment <this-file-without-.yaml>
+#      with free_text below set to something like:
+#        device_name:"ambulatory+electrocardiograph"
+#      (classification endpoint only, so it's a cheap lookup call)
+#   2. Inspect the resulting classification records' product_code and
+#      device_name fields (`market_intel pivot` won't help here since
+#      classification has no date field -- query the `raw_records` table
+#      directly, or add a small script using `market_intel.db`).
+#   3. Replace this file's `free_text` with an explicit `product_codes`
+#      list once you've confirmed the right ones, and rename the file
+#      (drop _TEMPLATE) to make it a real, reusable segment.
+description: >
+  TEMPLATE: ambulatory cardiac monitoring (Holter, MCT, ambulatory ECG).
+  Populate product_codes before relying on this segment -- see comments above.
+product_codes: []
+cfr_numbers: []
+device_classes: []
+applicants: []
+date_start: null
+date_end: null
+free_text: 'device_name:"ambulatory"'
+endpoints:
+  - classification

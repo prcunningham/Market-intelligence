@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Local runtime data -- the whole point of the SQLite cache is that it's
+# regenerable from openFDA via `market_intel refresh`, so it doesn't belong
+# in version control.
+data/
+*.sqlite
+*.sqlite3
+
+.env

@@ -1,0 +1,19 @@
+description: >
+  Oral/intraoral appliances for snoring and obstructive sleep apnea --
+  the LRK/LQZ/PLC product-code basket from the original manual project,
+  reproduced here as the first Phase 1 validation segment.
+product_codes:
+  - LRK
+  - LQZ
+  - PLC
+cfr_numbers: []
+device_classes: []
+applicants: []
+date_start: null
+date_end: null
+free_text: null
+endpoints:
+  - "510k"
+  - classification
+  - enforcement
+  - event

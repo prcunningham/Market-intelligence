@@ -1,0 +1,30 @@
+# Company-category taxonomy (openFDA has no equivalent field natively).
+#
+# Keys must match a `canonical` name from company_aliases.yaml (or a
+# company's own name, for one with no alias entry). Matching is
+# case/punctuation-insensitive, same as company_aliases.yaml.
+#
+# Suggested tags (free-form -- adjust to whatever taxonomy the engagement
+# needs; these are just the ones named in the project brief):
+#   - Strategic/Incumbent Medtech
+#   - PE-Backed Platform
+#   - Single-Product Startup
+#   - CDMO/Private-Label Filer
+#
+# Anything with no entry here is tagged "Unclassified" at analysis time --
+# that's expected for most small/individual applicants and is itself a
+# useful filter (e.g. "show me Unclassified applicants in this segment"
+# to find who's worth categorizing next).
+#
+# This is a SEED list to illustrate the pattern, not a maintained roll-up --
+# treat entries below as examples to correct/replace with your own judgment.
+
+categories:
+  Philips: Strategic/Incumbent Medtech
+  Medtronic: Strategic/Incumbent Medtech
+  Boston Scientific: Strategic/Incumbent Medtech
+  Abbott: Strategic/Incumbent Medtech
+  Baxter International: Strategic/Incumbent Medtech
+  GE Healthcare: Strategic/Incumbent Medtech
+  Zoll Medical: Strategic/Incumbent Medtech
+  ResMed: Strategic/Incumbent Medtech

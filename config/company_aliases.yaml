@@ -1,0 +1,86 @@
+# Company parent-name normalization.
+#
+# Each entry maps every historical/subsidiary spelling of a company to its
+# current corporate parent. Matching is case/punctuation/legal-suffix
+# insensitive (see market_intel/normalize.py:clean_name), so you don't need
+# to list "Inc.", "Corp", "LLC" variants separately.
+#
+# This is a SEED list covering names mentioned in the original sleep-
+# appliance project plus a few well-known medtech acquisitions relevant to
+# Sleep & Respiratory Care / Ambulatory Monitoring & Diagnostics. Extend it
+# as you encounter new names in `market_intel companies --segment <name>`
+# output (anything left at its raw/title-cased form and tagged
+# "Unclassified" in company_categories.yaml is a candidate to add here or
+# there). Small or individual applicants that are genuinely independent
+# don't need an entry -- they're left as-is by design.
+#
+# After editing this file, run `python -m market_intel rebuild-events` to
+# re-apply normalization to already-cached data without re-fetching from
+# openFDA.
+
+companies:
+  - canonical: Philips
+    aliases:
+      - Respironics
+      - Respironics Inc
+      - Philips Respironics
+      - Philips RS North America
+      - RIC (Respironics Inc)
+      - Philips Electronics
+      - Philips North America
+      - BioTelemetry
+      - BioTelemetry Inc
+      - CardioNet
+      - CardioNet Inc
+
+  - canonical: Medtronic
+    aliases:
+      - Medtronic Inc
+      - Medtronic PLC
+      - Restore Medical
+      - Restore Medical Inc
+      - Pi Medical
+      - Pi Medical Corporation
+      - Covidien
+      - Covidien LP
+      - Covidien AG
+
+  - canonical: Boston Scientific
+    aliases:
+      - Boston Scientific Corporation
+      - Preventice Solutions
+      - Preventice Services
+
+  - canonical: Abbott
+    aliases:
+      - Abbott Laboratories
+      - St Jude Medical
+      - St. Jude Medical Inc
+
+  - canonical: Baxter International
+    aliases:
+      - Baxter Healthcare
+      - Baxter Healthcare Corporation
+      - Hill-Rom
+      - Hill-Rom Holdings
+      - Hillrom
+      - Welch Allyn
+      - Welch Allyn Inc
+
+  - canonical: GE Healthcare
+    aliases:
+      - GE Medical Systems
+      - General Electric Medical Systems
+      - GE Healthcare Technologies
+
+  - canonical: Zoll Medical
+    aliases:
+      - Zoll Medical Corporation
+      - Itamar Medical
+      - Itamar Medical Ltd
+
+  - canonical: ResMed
+    aliases:
+      - ResMed Corp
+      - ResMed Inc
+      - Resmed Motor Technologies

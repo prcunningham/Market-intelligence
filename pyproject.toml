@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "market-intel"
+version = "0.1.0"
+description = "Medical device competitive intelligence platform (openFDA, with FCC/USPTO/regs.gov/CMS/ClinicalTrials.gov phases to follow)"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "PyYAML>=6.0",
+    "pandas>=2.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+]
+
+[project.scripts]
+market-intel = "market_intel.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["market_intel*"]
