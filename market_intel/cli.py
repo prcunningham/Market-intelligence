@@ -72,7 +72,13 @@ def cmd_pivot(args: argparse.Namespace) -> None:
     df = analysis.load_events(conn, segment=args.segment, endpoints=args.endpoint or None,
                                event_types=args.event_type or None)
     pivot = analysis.pivot_product_company_year(df, include_category=args.include_category)
-    _print_or_save(pivot, args.out, f"{args.segment}_pivot")
+
+    if args.out and args.out.endswith(".xlsx"):
+        listing = analysis.listing_510k(conn, segment=args.segment)
+        analysis.export_excel({"Pivot": pivot, "510k Listing": listing}, args.out)
+        print(f"Wrote pivot ({len(pivot)} rows) and 510k listing ({len(listing)} rows) to {args.out}")
+    else:
+        _print_or_save(pivot, args.out, f"{args.segment}_pivot")
     conn.close()
 
 

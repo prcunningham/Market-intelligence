@@ -183,3 +183,98 @@ def test_rebuild_events_picks_up_new_alias(conn, tmp_path):
 
     after = conn.execute("SELECT company_canonical FROM events").fetchone()[0]
     assert after == "Philips"
+
+
+def test_build_510k_summary_url():
+    assert (analysis.build_510k_summary_url("K052737")
+            == "https://www.accessdata.fda.gov/cdrh_docs/pdf5/K052737.pdf")
+    assert (analysis.build_510k_summary_url("K193503")
+            == "https://www.accessdata.fda.gov/cdrh_docs/pdf19/K193503.pdf")
+    assert (analysis.build_510k_summary_url("k123456")
+            == "https://www.accessdata.fda.gov/cdrh_docs/pdf12/K123456.pdf")
+
+
+def test_build_510k_summary_url_handles_bad_input():
+    assert analysis.build_510k_summary_url(None) is None
+    assert analysis.build_510k_summary_url("") is None
+    assert analysis.build_510k_summary_url("XYZ") is None
+
+
+def test_listing_510k_includes_sections_1_through_4(conn, normalizer):
+    records = {
+        "510k": [{
+            "k_number": "K193503",
+            "device_name": "Acme Sleep Appliance",
+            "applicant": "Respironics Inc",
+            "contact": "Jane Doe",
+            "address_1": "123 Main St",
+            "address_2": None,
+            "city": "Pittsburgh",
+            "state": "PA",
+            "zip_code": "15238",
+            "country_code": "US",
+            "date_received": "20190301",
+            "decision_date": "20190501",
+            "decision_code": "SESE",
+            "decision_description": "Substantially Equivalent",
+            "clearance_type": "Traditional",
+            "third_party_flag": "N",
+            "expedited_review_flag": "N",
+            "advisory_committee": "SU",
+            "advisory_committee_description": "General & Plastic Surgery",
+            "statement_or_summary": "Summary",
+            "product_code": "LRK",
+            "openfda": {
+                "device_class": "2",
+                "regulation_number": "872.5570",
+                "medical_specialty_description": "Dental",
+            },
+        }],
+        "classification": [{
+            "product_code": "LRK",
+            "device_class": "2",
+            "regulation_number": "872.5570",
+            "review_panel": "DE",
+            "definition": "An intraoral device intended to reduce snoring.",
+            "implant_flag": "N",
+            "life_sustain_support_flag": "N",
+            "gmp_exempt_flag": "N",
+        }],
+    }
+    client = FakeOpenFDAClient(records)
+    segment = Segment(name="test_segment", product_codes=["LRK"],
+                       endpoints=["510k", "classification"])
+    pipeline.run_segment(segment, conn=conn, client=client, normalizer=normalizer)
+
+    listing = analysis.listing_510k(conn, segment="test_segment", normalizer=normalizer)
+
+    assert list(listing.columns) == analysis.LISTING_510K_COLUMNS
+    assert len(listing) == 1
+    row = listing.iloc[0]
+    assert row["k_number"] == "K193503"
+    assert row["summary_pdf_url"] == "https://www.accessdata.fda.gov/cdrh_docs/pdf19/K193503.pdf"
+    assert row["applicant"] == "Respironics Inc"
+    assert row["company_canonical"] == "Philips"
+    assert row["company_category"] == "Strategic/Incumbent Medtech"
+    assert row["decision_description"] == "Substantially Equivalent"
+    assert row["device_class"] == "2"
+    assert row["review_panel"] == "DE"
+    assert row["definition"] == "An intraoral device intended to reduce snoring."
+
+
+def test_listing_510k_blank_classification_fields_when_not_fetched(conn, normalizer):
+    records = {"510k": [{
+        "k_number": "K052737",
+        "device_name": "Acme Device",
+        "applicant": "Acme Corp",
+        "product_code": "LRK",
+        "decision_date": "20050101",
+    }]}
+    client = FakeOpenFDAClient(records)
+    segment = Segment(name="test_segment", product_codes=["LRK"], endpoints=["510k"])
+    pipeline.run_segment(segment, conn=conn, client=client, normalizer=normalizer)
+
+    listing = analysis.listing_510k(conn, segment="test_segment", normalizer=normalizer)
+    row = listing.iloc[0]
+    assert row["review_panel"] is None
+    assert row["definition"] is None
